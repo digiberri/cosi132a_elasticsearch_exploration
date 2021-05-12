@@ -25,6 +25,7 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
         topics = parse_wapo_topics(str(xml_path))
         if query_type_index == 3:
             query_text = filter_content(topics[query_text][1])
+            print(query_text)
         else:
             query_text = topics[query_text][query_type_index]
 

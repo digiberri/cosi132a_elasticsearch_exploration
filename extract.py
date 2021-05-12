@@ -21,8 +21,9 @@ def extract_stops():
         for x in topic:
             c.update(nltk.word_tokenize(x))
     out = []
-    for item in c.most_common(30):
-         out.append(stemmer.stem(item[0]))
+    for item in c.most_common():
+        if item[1] > 10:
+            out.append(stemmer.stem(item[0]))
     return out
 
 
