@@ -6,8 +6,35 @@ from typing import List, Any
 from tqdm import tqdm
 import numpy as np
 from sentence_transformers import SentenceTransformer
-
+from keybert import KeyBERT
 from embedding_service.text_processing import TextProcessing
+
+class KeyBERTExtractor:
+    def __init__(self, model_name: str) -> None:
+        self.model = None
+        self.load(model_name)
+
+    def load(self, model_name: str) -> None:
+        try:
+            self.model = KeyBERT(model=model_name)
+            print("Model loaded Successfully !")
+        except Exception as e:
+            print("Error loading Model, ", str(e))
+
+    def encode(self, texts: List[str], pooling: Any = None) -> np.array:
+        """
+        encode a list of sentences into embeddings
+        :param texts:
+        :param pooling: no pooling method is needed for SBERT, argument passed in here is just a placeholder to make this method is consistent with fasttext
+        :return:
+        """
+        try:
+            assert self.model is not None
+        except AssertionError:
+            raise ValueError("model is not loaded!")
+        text_embeddings = self.model.extract_keywords(
+            texts[0],keyphrase_ngram_range=(1, 2), stop_words='english')
+        return text_embeddings
 
 
 class SBERTEmbedding:
@@ -111,6 +138,8 @@ class Encoder:
             self.embedding_model = SBERTEmbedding(self.model)
         elif self.embedding == "fasttext":
             self.embedding_model = FastTextEmbedding(self.model)
+        elif self.embedding =="keybert":
+            self.embedding_model = KeyBERTExtractor(self.model)
         else:
             raise ValueError(f"cannot find model: {self.model}.")
 

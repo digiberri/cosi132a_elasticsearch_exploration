@@ -4,6 +4,9 @@ python -m embedding_service.server --embedding fasttext  --model pa5_data/wiki-n
 # load sentence BERT embeddings that are trained on msmarco. Each embedding has 768 dimensions
 python -m embedding_service.server --embedding sbert  --model msmarco-distilbert-base-v3
 
+# Load KeyBERT keyphrase extractor
+python -m embedding_service.server --embedding keybert  --model stsb-roberta-base-v2
+
 # load wapo docs into the index called "wapo_docs_50k"
 python load_es_index.py --index_name wapo_docs_50k --wapo_path pa5_data/subset_wapo_50k_sbert_ft_filtered.jl
 
