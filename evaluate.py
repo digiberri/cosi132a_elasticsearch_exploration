@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from utils import parse_wapo_topics
 from metrics import ndcg
-
+from extract import filter_content
 from elasticsearch_dsl import Search
 from elasticsearch_dsl.query import Match, ScriptScore, Query
 from elasticsearch_dsl.connections import connections
@@ -21,9 +21,12 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
     if using_topic_id:
         # command line interface accesses queries this way, but the method also
         # supports direct querying via Flask app
-        query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2}[query_type]
+        query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2,'expanded_description':3}[query_type]
         topics = parse_wapo_topics(str(xml_path))
-        query_text = topics[query_text][query_type_index]
+        if query_type_index == 3:
+            query_text = filter_content(topics[query_text][1])
+        else:
+            query_text = topics[query_text][query_type_index]
 
     if using_custom:
         query = Match(custom_content={"query": query_text})
@@ -93,7 +96,7 @@ def produce_metrics(index_name):
     for topic in list(topics.items()):  # first 5 topics (change list indexes to alter)
         topic_id = topic[0]
         if topic_id == str(690):
-            fields = ['title', 'description', 'narrative']
+            fields = ['title', 'description', 'narrative','expanded_description']
             bm25_standard_hits = []
             bm25_custom_hits = []
             fasttext_hits = []
@@ -115,7 +118,7 @@ def produce_metrics(index_name):
             # converts each Search object to a list of relevance judgements and passes it to ndcg
             # prints the result for each field and each row title with fancy formatting
             # NOTE: ensure header matches contents of fields list (and in correct order)
-            print('Topic ' + topic_id, 'Title\t', 'Description', 'Narrative', sep='\t')  # header
+            print('Topic ' + topic_id, 'Title\t', 'Description', 'Narrative',"expanded_description", sep='\t')  # header
             for data_title, data_list_name in data_titles_to_lists_map.items():
                 data_list = eval(data_list_name)
                 print(data_title, end="\t")  # row title
@@ -151,5 +154,3 @@ if __name__ == "__main__":
             print("ERROR: INCOMPLETE FUNCTION CALL\n"
                   "Function call requires the following format (additional arguments optional):\n"
                   "python evaluate.py --index name INDEX_NAME --topic_id TOPIC_ID --query_type QUERY_TYPE")
-
-
