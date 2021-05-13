@@ -61,12 +61,19 @@ def filter_content(query,n=-1, m=-1):
         if synsets:
             lemN = synsets[n%len(synsets)].lemma_names()
             out.append(lemN[m%len(lemN)])
-        out.append(token)
+        #out.append(token)
     return " ".join(out).replace("_"," ")
 
 
 
 
 if __name__ == "__main__":
+    r=[]
+    for i in range(3):
+        for j in range(3):
+            x = filter_content("Find documents which describe an advantage in hiring potential or increased income for graduates of U.S. colleges.",i,j)
+            if x not in r:
+                r.append(x)
+    print(r)
     print(filter_content("Find documents which describe an advantage in hiring potential or increased income for graduates of U.S. colleges."))
     print(filter_content("Relevant documents cite some advantage of a college education for job opportunities. Documents citing better opportunities for non-college vocational-training is not relevant."))
