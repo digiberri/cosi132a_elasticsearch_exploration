@@ -1,1 +1,67 @@
-<!--TODO: add your html here-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style> body { background-color: lightskyblue; } </style>
+    <title>Search Results</title>
+</head>
+<body>
+
+<h3>Washington Post Search</h3>
+<form action="{{ url_for('results') }}" name="search" method="post">
+  Search Type
+  <br>
+  <label for="BM25" >BM25</label>
+  <input type="radio" checked="True" name="qtype" value="BM25" id="BM25">
+  <br>
+  <label for="BM25_custom">BM25_custom</label>
+  <input type="radio" name="qtype" value="BM25_custom" id="BM25_custom">
+  <br>
+  <label for="fastText">fastText</label>
+  <input type="radio" name="qtype" value="ft_vector" id="fastText">
+  <br>
+  <label for="Bert">Bert</label>
+  <input type="radio" name="qtype" value="sbert_vector" id="Bert">
+  <br>
+  <label for="Bert">Expanded Query</label>
+  <input type="radio" name="qtype" value="expanded_description" id="Query Expansion">
+  <br>
+  <label for="Bert">keyBERT</label>
+  <input type="radio" name="qtype" value="keyBERT" id="keyBERT">
+  <br>
+  <label for="query">Query:</label>
+  <input type="text" id="query" name="query" size=50>
+  <input type="submit" value="Search">
+</form>
+<form  name="Next" method="post">
+      <input type="hidden" value="{{query}}" id="query" name="query" size=50>
+      <input type="hidden" value="{{qtype}}" id="qtype" name="qtype" >
+      {% for pagen in range(maxpages)%}
+      <input type="submit" value="{{pagen}}"formaction="{{url_for('next_page',page_id=pagen)}}">
+      {% endfor %}
+</form>
+<div>
+  <h4>Searched with {{qtype}}</h4>
+	<ul>
+		{% for match in matches%}
+		<li>
+			[{{match[2]}}] &emsp;  <a href="{{url_for('doc_data',doc_id=match[1])}}">{{match[0]}}</a>
+            <br>
+            <p>
+                {{match[3]}}<br>
+                {{match[4]}}
+            </p>
+		</li>
+		{% endfor %}
+	</ul>
+</div>
+<!--NOTE:using same page system as previous to start-->
+<form  name="Next" method="post">
+      <input type="hidden" value="{{query}}" id="query" name="query" size=50>
+      <input type="hidden" value="{{qtype}}" id="qtype" name="qtype" >
+      {% for pagen in range(maxpages)%}
+      <input type="submit" value="{{pagen}}"formaction="{{url_for('next_page',page_id=pagen)}}">
+      {% endfor %}
+</form>
+</body>
+</html>
