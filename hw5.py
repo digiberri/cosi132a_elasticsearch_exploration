@@ -32,9 +32,9 @@ def results():
     else:
         results = evaluate(index_name="wapo_docs_50k",query_text=text,query_type=q_type,k=100,vector_name=q_type)
     matches = []
-    for hit in results:
+    for hit in results[1]:
         matches.append((hit.title,hit.meta.id,round(hit.meta.score,4),hit.content[:150]))
-    return render_template("results.html",matches=matches[:min(8,len(matches))],query=text,maxpages=math.ceil(len(matches)/8),qtype=q_type)
+    return render_template("results.html",matches=matches[:min(8,len(matches))],mod_q=results[0],query=text,maxpages=math.ceil(len(matches)/8),qtype=q_type)
 
 
 # "next page" to show more results
@@ -52,9 +52,9 @@ def next_page(page_id):
         results = evaluate(index_name="wapo_docs_50k",query_text=text,query_type=q_type,k=100,vector_name="sbert_vector")
     else:
         results = evaluate(index_name="wapo_docs_50k",query_text=text,query_type=q_type,k=100,vector_name=q_type)
-    for hit in results:
+    for hit in results[1]:
         matches.append((hit.title,hit.meta.id,round(hit.meta.score,4),hit.content[:150]))
-    return render_template("results.html",matches=matches[8*page_id:min(8*(page_id+1),len(matches))],query=text,maxpages=math.ceil(len(matches)/8),qtype=q_type)
+    return render_template("results.html",mod_q=results[0],matches=matches[8*page_id:min(8*(page_id+1),len(matches))],query=text,maxpages=math.ceil(len(matches)/8),qtype=q_type)
 
 
 # document page
