@@ -3,7 +3,7 @@ from typing import List
 import argparse
 from pathlib import Path
 from utils import parse_wapo_topics
-from metrics import ndcg
+from metrics import ndcg, Score
 from keybert_extraction import extract_keywords
 from extract import filter_content
 
@@ -130,14 +130,23 @@ def produce_metrics(index_name):
             # converts each Search object to a list of relevance judgements and passes it to ndcg
             # prints the result for each field and each row title with fancy formatting
             # NOTE: ensure header matches contents of fields list (and in correct order)
-            print('Topic ' + topic_id, 'Title\t', 'Description', 'Narrative', "expanded_desc", "keyBERT", sep='\t')  # header
+            row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
+            title = "{:27}{:27}{:27}{:27}{:27}"
+            print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative',
+                               "expanded_description", "keyBERT"))
+            for field in fields:
+                print("{:27}{:8}{:8}{:8}".format("", "ave_p", "prec", "ndcg"), end="")
             for data_title, data_list_name in data_titles_to_lists_map.items():
                 data_list = eval(data_list_name)
-                print(data_title, end="\t")  # row title
+                print_out=[data_title]
                 for i in range(len(fields)):
-                    print(round(ndcg(list_relevance_judgements(data_list[i], topic_id)), 5), end="\t\t")  # table contents
-                print()
-            print()
+                    rel_judge = Score.eval(list_relevance_judgements(data_list[i], topic_id),20)
+                    print_out.append(str(round(rel_judge.ap,5)))
+                    print_out.append(str(round(rel_judge.prec,5)))
+                    print_out.append(str(round(rel_judge.ndcg,5)))
+
+                    # table contents
+                print(row_format.format(*print_out))
 
 
 if __name__ == "__main__":
