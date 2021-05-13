@@ -27,19 +27,19 @@ def extract_stops():
     return out
 
 #Borrowed from Stack Overflow discussion of synsets with POStags
-def pos_to_wordnet_pos(penntag, returnNone=False):
+#Michael's edits
+def pos_to_wordnet_pos(pt, returnNone=False):
    ' Mapping from POS tag word wordnet pos tag '
-   morphy_tag = {'NN':wn.NOUN, 'JJ':wn.ADJ,
-                 'VB':wn.VERB, 'RB':wn.ADV}
+   tag = {'NN':wn.NOUN, 'JJ':wn.ADJ,'VB':wn.VERB, 'RB':wn.ADV}
    try:
-       return morphy_tag[penntag[:2]]
+       return tag[pt[:2]]
    except:
        return None if returnNone else ''
     
 
-def filter_content(query):
+def filter_content(query,n=-1, m=-1):
     """
-    Benjamin Siege
+    Benjamin Siege and Michael Gardner
     Use NLTK POS tagging to extract contentful words
     """
     def content(pos_tup):
@@ -47,9 +47,11 @@ def filter_content(query):
         # Match nouns, adverbs, adjectives and verbs
         regex = "(NN|JJ).{0,2}$"
         #return re.match(regex,pos_tup[1])
+        
         if re.match(regex,pos_tup[1]):
             return not stemmer.stem(pos_tup[0]) in stop_words
         return False
+        
     tokens = nltk.word_tokenize(query)
     out_tokens = list(filter(content,nltk.pos_tag(tokens)))
     out = []
@@ -57,7 +59,8 @@ def filter_content(query):
         # print(token)
         synsets = wn.synsets(token, pos_to_wordnet_pos(tag))
         if synsets:
-            out.extend(synsets[0].lemma_names())
+            lemN = synsets[n%len(synsets)].lemma_names()
+            out.append(lemN[m%len(lemN)])
         out.append(token)
     return " ".join(out).replace("_"," ")
 

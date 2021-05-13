@@ -9,15 +9,12 @@ from extract import filter_content
 
 
 from elasticsearch_dsl import Search
-from elasticsearch_dsl.query import Match, ScriptScore, Query
+from elasticsearch_dsl.query import Match, MatchAll, ScriptScore, Query
 from elasticsearch_dsl.connections import connections
 from embedding_service.client import EmbeddingClient
 
 data_dir = Path("data")
 xml_path = data_dir.joinpath("topics2018.xml")
-
-eval_query_text_ind = 0
-eval_query_ind = 1
 
 
 def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vector_name: str = None,
@@ -29,32 +26,43 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
         # supports direct querying via Flask app
         topic_id = query_text
         query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2,
-                            'expanded_description': 1, 'keyBERT': 4, 'expanded_narrative':2, 'expanded_title':0}[query_type]
+                            'expanded_description': 1, 'keyBERT': 4, 'expanded_narrative':2}[query_type]
         topics = parse_wapo_topics(str(xml_path))
         if query_type == 'keyBERT':
             query_text = " ".join(topics[topic_id])
 
         else:
             query_text = topics[topic_id][query_type_index]
-
     if using_custom:
-        query = Match(custom_content=query_text) or Match(title=query_text)
+        query = Match(custom_content={"query": query_text})
 
     elif vector_name:
-        if "expanded" in query_type:
-            query_text = filter_content(query_text)
-
-        elif query_type == 'keyBERT':
-            query_text = extract_keywords(query_text)
-
         encoding_map = {"sbert_vector": "sbert", "ft_vector": "fasttext"}
         encoder = EmbeddingClient(host="localhost", embedding_type=encoding_map[vector_name])
+        
+        if query_type == 'expanded_description' or query_type == "expanded_narrative":
+            if vector_name == 'ft_vector':
+                query_vector = encoder.encode([filter_content(query_text, 0)], pooling="mean").tolist()[0]
+                query = generate_script_score_query(query_text, query_vector, vector_name)
+            # special circumstances for expanded search
+            # filter content over a series of synonyms, and embed those syn queries
+            else:
+                query_text = [filter_content(query_text, i, j) for i in range(10) for j in range(3)]
+                query_vector = encoder.encode(query_text, pooling="mean").tolist()
+                query=False
+                for qv in query_vector:
+                    tmp = generate_script_score_query(query_text, qv, vector_name)
+                    query = tmp if not query else query and tmp
+            return search(index_name, query, k)
+        elif query_type == 'keyBERT':
+            query_text = extract_keywords(query_text)
         query_vector = encoder.encode([query_text], pooling="mean").tolist()[0]
         query = generate_script_score_query(query_text, query_vector, vector_name)
+        
     else:
-        query = Match(content=query_text) or Match(title=query_text)
+        query = Match(content={"query": query_text})
 
-    return query_text, search(index_name, query, k)
+    return search(index_name, query, k)
 
 
 def generate_script_score_query(query_text: str, query_vector: List[float], vector_name: str) -> Query:
@@ -65,10 +73,10 @@ def generate_script_score_query(query_text: str, query_vector: List[float], vect
     :param vector_name: embedding type, should match the field name defined in BaseDoc ("ft_vector" or "sbert_vector")
     :return: an query object
     """
-    if vector_name == 'ft_vector':
+    if vector_name=="ft_vector":
         x = Match(content=query_text)
     else:
-        x = Match(content=query_text) and Match(title=query_text)
+        x = MatchAll()
     query = ScriptScore(
         query=x,  # use BM25 with standard analyzer as the base query
         script={  # script your scoring function
@@ -112,40 +120,35 @@ def produce_metrics(index_name):
     connections.create_connection(hosts=["localhost"], timeout=100, alias="default")
     topics = parse_wapo_topics(str(xml_path))
 
-    for topic in list(topics.items()):  # first 5 topics (change list indexes to alter)
+    for topic in list(topics.items()):  #[:5] first 5 topics (change list indexes to alter)
         topic_id = topic[0]
         if topic_id == str(690):
-            fields = ['title', 'description', 'narrative', 'expanded_title','expanded_description', 'expanded_narrative', 'keyBERT']
+            fields = ['title', 'description', 'narrative', 'expanded_description', 'expanded_narrative', 'keyBERT']
             bm25_standard_hits = []
             bm25_custom_hits = []
             fasttext_hits = []
             sbert_hits = []
 
-
             # populates above lists with lists of Search objects returned by evaluate methods for each field
             for field in fields:
-                bm25_standard_hits.append(evaluate(
-                    index_name, topic_id, field, using_topic_id=True)[eval_query_ind])
-                bm25_custom_hits.append(evaluate(
-                    index_name, topic_id, field, using_topic_id=True, using_custom=True)[eval_query_ind])
-                fasttext_hits.append(evaluate(
-                    index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector')[eval_query_ind])
-                sbert_hits.append(evaluate(
-                    index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector')[eval_query_ind])
+                bm25_standard_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True))
+                bm25_custom_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, using_custom=True))
+                fasttext_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector'))
+                sbert_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector'))
 
             # maps row title to name of list containing search results for each method
             data_titles_to_lists_map = {'BM25+standard': 'bm25_standard_hits',
-                                            'BM25+custom': 'bm25_custom_hits',
-                                            'fastText': 'fasttext_hits',
-                                            'sBERT   ': 'sbert_hits'}
+                                        'BM25+custom': 'bm25_custom_hits',
+                                        'fastText': 'fasttext_hits',
+                                        'sBERT   ': 'sbert_hits'}
 
             # converts each Search object to a list of relevance judgements and passes it to ndcg
             # prints the result for each field and each row title with fancy formatting
             # NOTE: ensure header matches contents of fields list (and in correct order)
-            row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
-            title = "{:27}{:27}{:27}{:27}{:27}{:27}{:27}{:27}"
-            print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative','Expanded Title',
-                                "Expanded Description", "Expanded Narrative","keyBERT"))
+            row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
+            title = "{:27}{:27}{:27}{:27}{:27}{:27}{:27}"
+            print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative',
+                               "Expanded Description", "Expanded Narrative", "keyBERT"))
             print("{:27}{:8}{:8}{:11}".format("", "ave_p", "prec", "ndcg"), end="")
             for i in range(len(fields) - 1):
                 print("{:8}{:8}{:11}".format("ave_p", "prec", "ndcg"), end="")
@@ -185,8 +188,7 @@ if __name__ == "__main__":
 
         if args.index_name and args.topic_id and args.query_type:
             print_top_k_hits(evaluate(index_name=args.index_name, query_text=args.topic_id, query_type=args.query_type,
-                             k=args.top_k, vector_name=args.vector_name, using_topic_id=True, using_custom=args.u)
-                             [eval_query_ind])
+                             k=args.top_k, vector_name=args.vector_name, using_topic_id=True, using_custom=args.u))
         else:
             print("ERROR: INCOMPLETE FUNCTION CALL\n"
                   "Function call requires the following format (additional arguments optional):\n"

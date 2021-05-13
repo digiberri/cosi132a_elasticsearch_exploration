@@ -12,6 +12,8 @@ from elasticsearch_dsl import (  # type: ignore
 
 custom_analyzer = analyzer("custom_analyzer", tokenizer=tokenizer("standard"),
                            filter=["snowball"], token_filter=["asciifolding", "lowercase"])
+analyzer_690 = analyzer("analyzer_690", tokenizer=tokenizer('trigram', 'ngram', min_gram=3, max_gram=3),
+                           filter=["snowball"], token_filter=["asciifolding", "lowercase"])
 
 
 class BaseDoc(Document):
@@ -31,6 +33,9 @@ class BaseDoc(Document):
     )  # we can also set the standard analyzer explicitly
     custom_content = Text(
         analyzer=custom_analyzer
+    )
+    custom_content2 = Text(
+        analyzer=analyzer_690
     )
     date = Date(
         format="yyyy/MM/dd"
