@@ -4,7 +4,10 @@ import argparse
 from pathlib import Path
 from utils import parse_wapo_topics
 from metrics import ndcg
+from keybert_extraction import extract_keywords
 from extract import filter_content
+
+
 from elasticsearch_dsl import Search
 from elasticsearch_dsl.query import Match, ScriptScore, Query
 from elasticsearch_dsl.connections import connections
@@ -21,13 +24,21 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
     if using_topic_id:
         # command line interface accesses queries this way, but the method also
         # supports direct querying via Flask app
-        query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2,'expanded_description':3}[query_type]
+        topic_id = query_text
+        query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2,
+                            'expanded_description': 3, 'keyBERT': 4}[query_type]
         topics = parse_wapo_topics(str(xml_path))
-        if query_type_index == 3:
-            query_text = filter_content(topics[query_text][1])
-            print(query_text)
+        if query_type == 'expanded_description':
+            query_text = filter_content(topics[topic_id][1])
+
+        elif query_type == 'keyBERT':
+            query_text = []
+            for i in range(3):  # title, description, narrative
+                query_text.append(topics[topic_id][i])
+            query_text = extract_keywords(" ".join(query_text))
+
         else:
-            query_text = topics[query_text][query_type_index]
+            query_text = topics[topic_id][query_type_index]
 
     if using_custom:
         query = Match(custom_content={"query": query_text})
@@ -97,7 +108,7 @@ def produce_metrics(index_name):
     for topic in list(topics.items()):  # first 5 topics (change list indexes to alter)
         topic_id = topic[0]
         if topic_id == str(690):
-            fields = ['title', 'description', 'narrative','expanded_description']
+            fields = ['title', 'description', 'narrative', 'expanded_description', 'keyBERT']
             bm25_standard_hits = []
             bm25_custom_hits = []
             fasttext_hits = []
@@ -119,7 +130,7 @@ def produce_metrics(index_name):
             # converts each Search object to a list of relevance judgements and passes it to ndcg
             # prints the result for each field and each row title with fancy formatting
             # NOTE: ensure header matches contents of fields list (and in correct order)
-            print('Topic ' + topic_id, 'Title\t', 'Description', 'Narrative',"expanded_description", sep='\t')  # header
+            print('Topic ' + topic_id, 'Title\t', 'Description', 'Narrative', "expanded_desc", "keyBERT", sep='\t')  # header
             for data_title, data_list_name in data_titles_to_lists_map.items():
                 data_list = eval(data_list_name)
                 print(data_title, end="\t")  # row title
