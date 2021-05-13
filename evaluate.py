@@ -16,6 +16,9 @@ from embedding_service.client import EmbeddingClient
 data_dir = Path("data")
 xml_path = data_dir.joinpath("topics2018.xml")
 
+eval_query_text_ind = 0
+eval_query_ind = 1
+
 
 def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vector_name: str = None,
              using_topic_id: bool = False, using_custom: bool = False):
@@ -51,7 +54,7 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
     else:
         query = Match(content={"query": query_text})
 
-    return search(index_name, query, k)
+    return query_text, search(index_name, query, k)
 
 
 def generate_script_score_query(query_text: str, query_vector: List[float], vector_name: str) -> Query:
@@ -114,12 +117,17 @@ def produce_metrics(index_name):
             fasttext_hits = []
             sbert_hits = []
 
+
             # populates above lists with lists of Search objects returned by evaluate methods for each field
             for field in fields:
-                bm25_standard_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True))
-                bm25_custom_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, using_custom=True))
-                fasttext_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector'))
-                sbert_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector'))
+                bm25_standard_hits.append(evaluate(
+                    index_name, topic_id, field, using_topic_id=True)[eval_query_ind])
+                bm25_custom_hits.append(evaluate(
+                    index_name, topic_id, field, using_topic_id=True, using_custom=True)[eval_query_ind])
+                fasttext_hits.append(evaluate(
+                    index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector')[eval_query_ind])
+                sbert_hits.append(evaluate(
+                    index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector')[eval_query_ind])
 
             # maps row title to name of list containing search results for each method
             data_titles_to_lists_map = {'BM25+standard': 'bm25_standard_hits',
@@ -173,7 +181,8 @@ if __name__ == "__main__":
 
         if args.index_name and args.topic_id and args.query_type:
             print_top_k_hits(evaluate(index_name=args.index_name, query_text=args.topic_id, query_type=args.query_type,
-                             k=args.top_k, vector_name=args.vector_name, using_topic_id=True, using_custom=args.u))
+                             k=args.top_k, vector_name=args.vector_name, using_topic_id=True, using_custom=args.u)
+                             [eval_query_ind])
         else:
             print("ERROR: INCOMPLETE FUNCTION CALL\n"
                   "Function call requires the following format (additional arguments optional):\n"
