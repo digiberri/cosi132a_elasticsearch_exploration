@@ -21,9 +21,9 @@ def extract_stops():
         for x in topic:
             c.update(nltk.word_tokenize(x))
     out = []
-    for item in c.most_common():
-        if item[1] > 10:
-            out.append(stemmer.stem(item[0]))
+    for item in c.most_common(30):
+        # if item[1] > 10:
+        out.append(stemmer.stem(item[0]))
     return out
 
 
@@ -48,8 +48,7 @@ def filter_content(query):
         synsets = wn.synsets(token)
         if synsets:
             out.extend(synsets[0].lemma_names())
-        else:
-            out.append(token)
+        out.append(token)
     return " ".join(out).replace("_"," ")
 
 
