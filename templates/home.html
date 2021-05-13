@@ -14,20 +14,6 @@
 <h3>Washington Post Search</h3>
 
 <form action="{{ url_for('results') }}" name="search" method="post">
-    Search Type
-    <br>
-    <label for="BM25" >BM25</label>
-    <input type="radio" checked="True" name="qtype" value="BM25" id="BM25">
-    <br>
-    <label for="BM25_custom">BM25_custom</label>
-    <input type="radio" name="qtype" value="BM25_custom" id="BM25_custom">
-    <br>
-    <label for="fastText">fastText</label>
-    <input type="radio" name="qtype" value="fasttext" id="fastText">
-    <br>
-    <label for="Bert">Bert</label>
-    <input type="radio" name="qtype" value="sbert" id="Bert">
-    <br>
     <label for="query">Query:</label>
     <input type="text" id="query" name="query" size=50>
     <input type="submit" value="Search">

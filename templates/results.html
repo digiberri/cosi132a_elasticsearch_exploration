@@ -23,14 +23,14 @@
   <label for="Bert">Bert</label>
   <input type="radio" name="qtype" value="sbert_vector" id="Bert">
   <br>
-  <label for="Bert">Expanded Query</label>
+  <label for="Query Expansion">Expanded Query</label>
   <input type="radio" name="qtype" value="expanded_description" id="Query Expansion">
   <br>
-  <label for="Bert">keyBERT</label>
+  <label for="keyBERT">keyBERT</label>
   <input type="radio" name="qtype" value="keyBERT" id="keyBERT">
   <br>
   <label for="query">Query:</label>
-  <input type="text" id="query" name="query" size=50>
+  <input type="text" id="query" value="{{query}}" name="query" size=50>
   <input type="submit" value="Search">
 </form>
 <form  name="Next" method="post">
