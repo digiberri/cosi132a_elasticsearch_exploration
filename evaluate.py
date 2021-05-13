@@ -32,10 +32,8 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
             query_text = filter_content(topics[topic_id][1])
 
         elif query_type == 'keyBERT':
-            query_text = []
-            for i in range(3):  # title, description, narrative
-                query_text.append(topics[topic_id][i])
-            query_text = extract_keywords(" ".join(query_text))
+            query_text = " ".join(topics[topic_id])
+            query_text = extract_keywords(query_text)
 
         else:
             query_text = topics[topic_id][query_type_index]
@@ -105,50 +103,51 @@ def produce_metrics(index_name):
     connections.create_connection(hosts=["localhost"], timeout=100, alias="default")
     topics = parse_wapo_topics(str(xml_path))
 
-    for topic in list(topics.items()):  # first 5 topics (change list indexes to alter)
+    for topic in list(topics.items())[:5]:  # first 5 topics (change list indexes to alter)
         topic_id = topic[0]
-        if topic_id == str(690):
-            fields = ['title', 'description', 'narrative', 'expanded_description', 'keyBERT']
-            bm25_standard_hits = []
-            bm25_custom_hits = []
-            fasttext_hits = []
-            sbert_hits = []
+        # if topic_id == str(690):
+        fields = ['title', 'description', 'narrative', 'expanded_description', 'keyBERT']
+        bm25_standard_hits = []
+        bm25_custom_hits = []
+        fasttext_hits = []
+        sbert_hits = []
 
-            # populates above lists with lists of Search objects returned by evaluate methods for each field
-            for field in fields:
-                bm25_standard_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True))
-                bm25_custom_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, using_custom=True))
-                fasttext_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector'))
-                sbert_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector'))
+        # populates above lists with lists of Search objects returned by evaluate methods for each field
+        for field in fields:
+            bm25_standard_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True))
+            bm25_custom_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, using_custom=True))
+            fasttext_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='ft_vector'))
+            sbert_hits.append(evaluate(index_name, topic_id, field, using_topic_id=True, vector_name='sbert_vector'))
 
-            # maps row title to name of list containing search results for each method
-            data_titles_to_lists_map = {'BM25+standard': 'bm25_standard_hits',
-                                        'BM25+custom': 'bm25_custom_hits',
-                                        'fastText': 'fasttext_hits',
-                                        'sBERT   ': 'sbert_hits'}
+        # maps row title to name of list containing search results for each method
+        data_titles_to_lists_map = {'BM25+standard': 'bm25_standard_hits',
+                                    'BM25+custom': 'bm25_custom_hits',
+                                    'fastText': 'fasttext_hits',
+                                    'sBERT   ': 'sbert_hits'}
 
-            # converts each Search object to a list of relevance judgements and passes it to ndcg
-            # prints the result for each field and each row title with fancy formatting
-            # NOTE: ensure header matches contents of fields list (and in correct order)
-            row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
-            title = "{:27}{:27}{:27}{:27}{:27}{:27}"
-            print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative',
-                               "Expanded Description", "keyBERT"))
-            print("{:27}{:8}{:8}{:11}".format("", "ave_p", "prec", "ndcg"), end="")
-            for i in range(len(fields) - 1):
-                print("{:8}{:8}{:11}".format("ave_p", "prec", "ndcg"), end="")
-            print()
-            for data_title, data_list_name in data_titles_to_lists_map.items():
-                data_list = eval(data_list_name)
-                print_out=[data_title]
-                for i in range(len(fields)):
-                    rel_judge = Score.eval(list_relevance_judgements(data_list[i], topic_id),20)
-                    print_out.append(str(round(rel_judge.ap,5)))
-                    print_out.append(str(round(rel_judge.prec,5)))
-                    print_out.append(str(round(rel_judge.ndcg,5)))
+        # converts each Search object to a list of relevance judgements and passes it to ndcg
+        # prints the result for each field and each row title with fancy formatting
+        # NOTE: ensure header matches contents of fields list (and in correct order)
+        row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
+        title = "{:27}{:27}{:27}{:27}{:27}{:27}"
+        print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative',
+                           "Expanded Description", "keyBERT"))
+        print("{:27}{:8}{:8}{:11}".format("", "ave_p", "prec", "ndcg"), end="")
+        for i in range(len(fields) - 1):
+            print("{:8}{:8}{:11}".format("ave_p", "prec", "ndcg"), end="")
+        print()
+        for data_title, data_list_name in data_titles_to_lists_map.items():
+            data_list = eval(data_list_name)
+            print_out=[data_title]
+            for i in range(len(fields)):
+                rel_judge = Score.eval(list_relevance_judgements(data_list[i], topic_id),20)
+                print_out.append(str(round(rel_judge.ap,5)))
+                print_out.append(str(round(rel_judge.prec,5)))
+                print_out.append(str(round(rel_judge.ndcg,5)))
 
-                    # table contents
-                print(row_format.format(*print_out))
+                # table contents
+            print(row_format.format(*print_out))
+        print()
 
 
 if __name__ == "__main__":
