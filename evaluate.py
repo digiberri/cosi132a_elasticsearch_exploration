@@ -131,11 +131,13 @@ def produce_metrics(index_name):
             # prints the result for each field and each row title with fancy formatting
             # NOTE: ensure header matches contents of fields list (and in correct order)
             row_format = "{:27}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}{:8}{:8}{:11}"
-            title = "{:27}{:27}{:27}{:27}{:27}"
+            title = "{:27}{:27}{:27}{:27}{:27}{:27}"
             print(title.format('Topic ' + topic_id, 'Title', 'Description', 'Narrative',
-                               "expanded_description", "keyBERT"))
-            for field in fields:
-                print("{:27}{:8}{:8}{:8}".format("", "ave_p", "prec", "ndcg"), end="")
+                               "Expanded Description", "keyBERT"))
+            print("{:27}{:8}{:8}{:11}".format("", "ave_p", "prec", "ndcg"), end="")
+            for i in range(len(fields) - 1):
+                print("{:8}{:8}{:11}".format("ave_p", "prec", "ndcg"), end="")
+            print()
             for data_title, data_list_name in data_titles_to_lists_map.items():
                 data_list = eval(data_list_name)
                 print_out=[data_title]
