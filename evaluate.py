@@ -29,11 +29,10 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
                             'expanded_description': 3, 'keyBERT': 4}[query_type]
         topics = parse_wapo_topics(str(xml_path))
         if query_type == 'expanded_description':
-            query_text = filter_content(topics[topic_id][1])
+            query_text = topics[topic_id][1]  # ensure matches description value in query_type_index
 
         elif query_type == 'keyBERT':
             query_text = " ".join(topics[topic_id])
-            query_text = extract_keywords(query_text)
 
         else:
             query_text = topics[topic_id][query_type_index]
@@ -42,6 +41,12 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
         query = Match(custom_content={"query": query_text})
 
     elif vector_name:
+        if query_type == 'expanded_description':
+            query_text = filter_content(query_text)
+
+        elif query_type == 'keyBERT':
+            query_text = extract_keywords(query_text)
+
         encoding_map = {"sbert_vector": "sbert", "ft_vector": "fasttext"}
         encoder = EmbeddingClient(host="localhost", embedding_type=encoding_map[vector_name])
         query_vector = encoder.encode([query_text], pooling="mean").tolist()[0]
@@ -140,10 +145,10 @@ def produce_metrics(index_name):
             data_list = eval(data_list_name)
             print_out=[data_title]
             for i in range(len(fields)):
-                rel_judge = Score.eval(list_relevance_judgements(data_list[i], topic_id),20)
-                print_out.append(str(round(rel_judge.ap,5)))
-                print_out.append(str(round(rel_judge.prec,5)))
-                print_out.append(str(round(rel_judge.ndcg,5)))
+                rel_judge = Score.eval(list_relevance_judgements(data_list[i], topic_id), 20)
+                print_out.append(str(round(rel_judge.ap, 5)))
+                print_out.append(str(round(rel_judge.prec, 5)))
+                print_out.append(str(round(rel_judge.ndcg, 5)))
 
                 # table contents
             print(row_format.format(*print_out))
