@@ -26,12 +26,9 @@ def evaluate(index_name: str, query_text: str, query_type: str, k: int = 20, vec
         # supports direct querying via Flask app
         topic_id = query_text
         query_type_index = {'title': 0, 'description': 1, 'narrative': 2, 'narration': 2,
-                            'expanded_description': 3, 'keyBERT': 4}[query_type]
+                            'expanded_description': 1, 'keyBERT': 4}[query_type]
         topics = parse_wapo_topics(str(xml_path))
-        if query_type == 'expanded_description':
-            query_text = topics[topic_id][1]  # ensure matches description value in query_type_index
-
-        elif query_type == 'keyBERT':
+        if query_type == 'keyBERT':
             query_text = " ".join(topics[topic_id])
 
         else:
